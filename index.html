@@ -226,6 +226,10 @@
         let restartTimer = null;
         const letterGroups = [];
         let letterSeq = null;
+        let flashVisible = true;
+        let flashX = 0;
+        let flashY = 0;
+        let nextFlashChange = 0;
 
         function isPortrait() {
             return window.innerHeight > window.innerWidth;
@@ -250,7 +254,7 @@
                 const sc = Math.min(
                     (1366 * 0.55) / bbox.width,
                     (768 * 0.65) / bbox.height
-                ) * 1.3;
+                ) * 2;
                 const cx = bbox.x + bbox.width / 2;
                 const cy = bbox.y + bbox.height / 2;
                 g.setAttribute('transform',
@@ -283,6 +287,10 @@
                     letterSeq.style.display = 'none';
                     logoPaths.style.display = '';
                     letterState = 'done';
+                    flashVisible = true;
+                    flashX = 0;
+                    flashY = 0;
+                    nextFlashChange = 0;
                     restartTimer = setTimeout(function() {
                         if (isPortrait() && letterState === 'done') {
                             startLetterSequence();
@@ -293,7 +301,7 @@
             }
             triggerGlitch();
             setTimeout(function() { letterGroups[currentLetter].style.opacity = '1'; }, 80);
-            letterTimer = setTimeout(showNextLetter, 1000);
+            letterTimer = setTimeout(showNextLetter, 500);
         }
 
         function resetLetterSequence() {
@@ -324,13 +332,31 @@
 
             let filter = '';
 
-            if (glitching && (hovering || letterState === 'sequence')) {
+            if (letterState === 'done') {
+                if (t > nextFlashChange) {
+                    flashVisible = !flashVisible;
+                    if (flashVisible) {
+                        flashX = (Math.random() - 0.5) * 600;
+                        flashY = (Math.random() - 0.5) * 400;
+                    }
+                    nextFlashChange = t + 0.05 + Math.random() * 0.12;
+                }
+                if (flashVisible) {
+                    logoPaths.style.opacity = '';
+                    dx += flashX;
+                    dy += flashY;
+                } else {
+                    logoPaths.style.opacity = '0';
+                }
+            }
+
+            if (glitching && (hovering || letterState === 'sequence' || letterState === 'done')) {
                 const intensity = 1 - sinceGlitch / glitchDuration;
                 const chop = Math.floor(sinceGlitch * 6) % 4;
                 if (letterState !== 'sequence') {
-                    if (chop === 0) dx += 30;
-                    else if (chop === 2) dx -= 25;
-                    if (chop === 1) dy += 15;
+                    if (chop === 0) dx += 40;
+                    else if (chop === 2) dx -= 35;
+                    if (chop === 1) dy += 20;
                 }
                 if (chop === 1) {
                     scale *= 1.1;
@@ -341,7 +367,8 @@
                 }
             }
 
-            if (t > nextGlitch && !glitching && hovering && letterState !== 'sequence') {
+            if ((t > nextGlitch && !glitching && hovering && letterState !== 'sequence') ||
+                (letterState === 'done' && !glitching)) {
                 triggerGlitch();
             }
 
