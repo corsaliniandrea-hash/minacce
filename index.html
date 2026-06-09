@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>MINACCE</title>
+    <script src="https://unpkg.com/hydra-synth"></script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+        }
+        body {
+            background: #000;
+            background-image: url('sfondo.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        #lightning-svg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none;
+            z-index: 5;
+            mix-blend-mode: difference;
+        }
+        #hydra-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            display: block;
+            mix-blend-mode: screen;
+            opacity: 0.3;
+            pointer-events: none;
+            z-index: 2;
+        }
+        #logo {
+            position: fixed;
+            top: 50%; left: 50%;
+            /* transform set by JS animation */
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+            z-index: 3;
+            opacity: 0.7;
+            overflow: visible;
+            filter: drop-shadow(0 0 40px rgba(0,0,0,0.7));
+        }
+        #logo-paths { fill: #fff; }
+        #letter-sequence { fill: #fff; }
+    </style>
+</head>
+<body>
+    <svg id="lightning-svg"></svg>
+    <canvas id="hydra-canvas"></canvas>
+    <svg id="logo" viewBox="0 0 1366 768" preserveAspectRatio="xMidYMid meet"
+         xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <filter id="noisy-text" x="-20%" y="-20%" width="140%" height="140%">
+                <feTurbulence type="fractalNoise" baseFrequency="2.5" numOctaves="3" seed="1" result="noise"/>
+                <feDisplacementMap in="SourceGraphic" in2="noise" scale="14" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+        </defs>
+        <g id="logo-paths" filter="url(#noisy-text)">
+            <path d="M196,517.3V251.1h81.2l22.3,162.4,22.3-162.4h81.8v266.2h-48.7v-191.8l-30.7,191.8h-47.7l-32.5-191.8v191.8h-48Z"/>
+            <path d="M424.7,517.3V251.1h51.4v266.2h-51.4Z"/>
+            <path d="M497.6,517.3V251.1h54.9l24.5,127.4v-127.4h51.4v266.2h-52.1l-26.7-133.3v133.3h-52.1Z"/>
+            <path d="M644.8,517.3l25.7-266.2h90.2l25.4,266.2h-50.5l-3.7-43.1h-32.2l-3.1,43.1h-51.8ZM703.7,431.8h24.2l-11.8-135.4h-2.5l-9.9,135.4Z"/>
+            <path d="M817.5,501.5c-11.7-12.2-17.5-28.9-17.5-50.2v-122.7c0-26.4,5.3-46.4,15.8-59.8,10.5-13.4,27.1-20.1,49.6-20.1s35.4,5.4,47.4,16.1c12,10.7,18,26.2,18,46.5v45.9h-53v-39.4c0-7.6-.9-12.9-2.8-15.8-1.9-2.9-5.1-4.3-9.6-4.3s-8,1.7-9.8,5c-1.8,3.3-2.6,8.2-2.6,14.6v133.6c0,7,1,12.1,3.1,15.3,2.1,3.2,5.2,4.8,9.3,4.8,8.3,0,12.4-6.7,12.4-20.1v-48h53.6v50.2c0,44.6-22.4,66.9-67.2,66.9s-35-6.1-46.6-18.3Z"/>
+            <path d="M964.4,501.5c-11.7-12.2-17.5-28.9-17.5-50.2v-122.7c0-26.4,5.3-46.4,15.8-59.8,10.5-13.4,27.1-20.1,49.6-20.1s35.4,5.4,47.4,16.1c12,10.7,18,26.2,18,46.5v45.9h-53v-39.4c0-7.6-.9-12.9-2.8-15.8-1.9-2.9-5.1-4.3-9.6-4.3s-8,1.7-9.8,5c-1.8,3.3-2.6,8.2-2.6,14.6v133.6c0,7,1,12.1,3.1,15.3,2.1,3.2,5.2,4.8,9.3,4.8,8.3,0,12.4-6.7,12.4-20.1v-48h53.6v50.2c0,44.6-22.4,66.9-67.2,66.9s-35-6.1-46.6-18.3Z"/>
+            <path d="M1096,517.3V251.1h106.6v51.4h-52.4v51.8h50.2v50.2h-50.2v61.1h55.8v51.8h-110Z"/>
+        </g>
+    </svg>
+
+    <canvas id="noise-overlay"></canvas>
+    <style>
+        #noise-overlay {
+            position: fixed; top: 0; left: 0;
+            width: 100vw; height: 100vh;
+            pointer-events: none; z-index: 4;
+            mix-blend-mode: multiply; opacity: 0.1;
+        }
+    </style>
+
+    <script>
+        const canvas = document.getElementById('hydra-canvas');
+
+        function resizeCanvas() {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            canvas.width = w * devicePixelRatio;
+            canvas.height = h * devicePixelRatio;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+        }
+
+        resizeCanvas();
+
+        const hydra = new Hydra({
+            canvas: canvas,
+            detectAudio: false,
+            makeGlobal: true,
+            width: canvas.width,
+            height: canvas.height,
+        });
+
+        // disintegration by Ritchse — CC BY-NC-SA 4.0
+        osc(5,.1).modulate(noise(6),.22).diff(o0)
+            .modulateScrollY(osc(2).modulate(osc().rotate(),.11))
+            .scale(.72).color(0.99,1.014,1)
+            .out();
+
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (hydra.setResolution) {
+                hydra.setResolution(canvas.width, canvas.height);
+            }
+        });
+
+        const lightningSvg = document.getElementById('lightning-svg');
+        const W = () => window.innerWidth;
+        const H = () => window.innerHeight;
+
+        function branch(fromX, fromY, angle, length, depth, maxDepth, path, main) {
+            if (depth > maxDepth || length < 2) return;
+            const jitter = (Math.random() - 0.5) * 0.6;
+            const toX = fromX + Math.cos(angle + jitter) * length;
+            const toY = fromY + Math.sin(angle + jitter) * length;
+            const w = main ? 2.5 + Math.random() * 2 : 1 + Math.random();
+            path.push({ x1: fromX, y1: fromY, x2: toX, y2: toY, w: w });
+            if (!main && depth < maxDepth - 1) {
+                const branchCount = 1 + Math.floor(Math.random() * 3);
+                for (let i = 0; i < branchCount; i++) {
+                    if (Math.random() < 0.5) {
+                        const ba = angle + (Math.random() - 0.5) * 1.4;
+                        const bl = length * (0.2 + Math.random() * 0.35);
+                        branch(toX, toY, ba, bl, depth + 1, maxDepth, path, false);
+                    }
+                }
+            }
+            const nextAngle = angle + (Math.random() - 0.5) * 0.7;
+            const nextLen = length * (0.6 + Math.random() * 0.3);
+            branch(toX, toY, nextAngle, nextLen, depth, maxDepth, path, main);
+        }
+
+        function createLightning() {
+            var w = W(), h = H();
+            var x = Math.random() * w;
+            var segments = [];
+            var maxDepth = 5 + Math.floor(Math.random() * 3);
+            var mainLen = h * (0.35 + Math.random() * 0.35);
+            var angle = Math.PI / 2 + (Math.random() - 0.5) * 0.25;
+            branch(x, 0, angle, mainLen, 0, maxDepth, segments, true);
+
+            var ns = 'http://www.w3.org/2000/svg';
+            var group = document.createElementNS(ns, 'g');
+            segments.forEach(function(s) {
+                var line = document.createElementNS(ns, 'line');
+                line.setAttribute('x1', s.x1);
+                line.setAttribute('y1', s.y1);
+                line.setAttribute('x2', s.x2);
+                line.setAttribute('y2', s.y2);
+                line.setAttribute('stroke', '#fff');
+                line.setAttribute('stroke-width', s.w.toFixed(1));
+                line.setAttribute('stroke-linecap', 'round');
+                group.appendChild(line);
+            });
+            lightningSvg.appendChild(group);
+
+            var flickers = 2 + Math.floor(Math.random() * 3);
+            var i = 0;
+            function flicker() {
+                if (i >= flickers) { group.remove(); return; }
+                group.style.opacity = (i % 2 === 0) ? '1' : '0.2';
+                i++;
+                setTimeout(flicker, 50 + Math.random() * 80);
+            }
+            group.style.opacity = '1';
+            setTimeout(flicker, 40);
+        }
+
+        function scheduleLightning() {
+            var count = 2 + Math.floor(Math.random() * 4);
+            for (var i = 0; i < count; i++) {
+                setTimeout(createLightning, i * 80 + Math.random() * 60);
+            }
+            setTimeout(scheduleLightning, 1200 + Math.random() * 800);
+        }
+
+        scheduleLightning();
+
+        const logo = document.getElementById('logo');
+        const logoPaths = document.getElementById('logo-paths');
+        const turbulence = document.querySelector('#noisy-text feTurbulence');
+
+        let noiseSeed = 1;
+        setInterval(() => {
+            noiseSeed = (noiseSeed + 1) % 1000;
+            turbulence.setAttribute('seed', noiseSeed);
+        }, 80);
+
+        let startTime = performance.now();
+        let glitchStart = -999;
+        let glitchDuration = 0;
+        let nextGlitch = 2 + Math.random() * 4;
+        let hovering = false;
+
+        let hoverTimer = null;
+        function setHovering(v) {
+            if (hovering === v && v !== false) return;
+            hovering = v;
+            if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
+            if (v) { hoverTimer = setTimeout(() => hovering = false, 2000); }
+        }
+        document.addEventListener('mousemove', () => setHovering(true));
+        document.addEventListener('mouseleave', () => setHovering(false));
+        document.addEventListener('touchstart', () => setHovering(true));
+        document.addEventListener('touchend', () => setHovering(false));
+
+        // --- Letter Sequence for Portrait Mode ---
+        let letterState = 'idle';
+        let currentLetter = -1;
+        let letterTimer = null;
+        const letterGroups = [];
+        let letterSeq = null;
+
+        function isPortrait() {
+            return window.innerHeight > window.innerWidth;
+        }
+
+        (function initLetterSequence() {
+            const ns = 'http://www.w3.org/2000/svg';
+            letterSeq = document.createElementNS(ns, 'g');
+            letterSeq.id = 'letter-sequence';
+            letterSeq.setAttribute('filter', 'url(#noisy-text)');
+            letterSeq.style.display = 'none';
+
+            const paths = logoPaths.querySelectorAll('path');
+            paths.forEach(function(path, i) {
+                const bbox = path.getBBox();
+                const g = document.createElementNS(ns, 'g');
+                g.id = 'ls-' + i;
+                const clone = path.cloneNode(true);
+                clone.setAttribute('fill', '#fff');
+                g.appendChild(clone);
+
+                const sc = (1366 * 0.55) / bbox.width;
+                const cx = bbox.x + bbox.width / 2;
+                const cy = bbox.y + bbox.height / 2;
+                g.setAttribute('transform',
+                    'translate(683,384) translate(' + (-cx * sc) + ',' + (-cy * sc) + ') scale(' + sc + ')');
+                g.style.opacity = '0';
+
+                letterSeq.appendChild(g);
+                letterGroups.push(g);
+            });
+
+            logo.insertBefore(letterSeq, logoPaths);
+        })();
+
+        function startLetterSequence() {
+            if (letterState === 'sequence') return;
+            letterState = 'sequence';
+            currentLetter = -1;
+            letterSeq.style.display = '';
+            logoPaths.style.display = 'none';
+            showNextLetter();
+        }
+
+        function showNextLetter() {
+            if (letterState !== 'sequence') return;
+            if (currentLetter >= 0) letterGroups[currentLetter].style.opacity = '0';
+            currentLetter++;
+            if (currentLetter >= letterGroups.length) {
+                triggerGlitch();
+                setTimeout(function() {
+                    letterSeq.style.display = 'none';
+                    logoPaths.style.display = '';
+                    letterState = 'done';
+                }, 300);
+                return;
+            }
+            triggerGlitch();
+            setTimeout(function() { letterGroups[currentLetter].style.opacity = '1'; }, 80);
+            letterTimer = setTimeout(showNextLetter, 1000);
+        }
+
+        function resetLetterSequence() {
+            if (letterTimer) { clearTimeout(letterTimer); letterTimer = null; }
+            letterState = 'idle';
+            currentLetter = -1;
+            if (letterSeq) letterSeq.style.display = 'none';
+            logoPaths.style.display = '';
+            letterGroups.forEach(function(g) { g.style.opacity = '0'; });
+        }
+
+        function triggerGlitch() {
+            glitchStart = (performance.now() - startTime) / 1000;
+            glitchDuration = 0.1 + Math.random() * 0.2;
+            nextGlitch = glitchDuration + 4 + Math.random() * 8;
+        }
+
+        function animateLogo(now) {
+            const t = (now - startTime) / 1000;
+            const sinceGlitch = t - glitchStart;
+            const glitching = sinceGlitch >= 0 && sinceGlitch < glitchDuration;
+
+            let scale = 1 + Math.sin(t / 6.2) * 0.06;
+            let rotate = Math.sin(t / 8) * 4 + Math.sin(t / 3) * 1.5;
+            let dx = Math.sin(t / 5.3) * 20 + Math.sin(t / 2.1) * 6;
+            let dy = Math.cos(t / 4.7) * 14 + Math.cos(t / 1.9) * 5;
+
+            let filter = '';
+
+            if (glitching && (hovering || letterState === 'sequence')) {
+                const intensity = 1 - sinceGlitch / glitchDuration;
+                const chop = Math.floor(sinceGlitch * 6) % 4;
+                if (chop === 0) dx += 30;
+                else if (chop === 2) dx -= 25;
+                if (chop === 1) {
+                    scale *= 1.1;
+                    dy += 15;
+                }
+                if (chop === 3) {
+                    rotate += 10;
+                    filter = `invert(1)`;
+                }
+            }
+
+            if (t > nextGlitch && !glitching && hovering && letterState !== 'sequence') {
+                triggerGlitch();
+            }
+
+            const skew = glitching ? 3 : 0;
+
+            logo.style.transform =
+                `translate(-50%, -50%) translate(${dx}px, ${dy}px) scale(${scale}) rotate(${rotate}deg) skewX(${skew}deg)`;
+            logo.style.filter = filter
+                ? `drop-shadow(0 0 40px rgba(0,0,0,0.7)) ${filter}`
+                : `drop-shadow(0 0 40px rgba(0,0,0,0.7))`;
+            requestAnimationFrame(animateLogo);
+        }
+
+        requestAnimationFrame(animateLogo);
+
+        let wasPortrait = null;
+
+        function checkOrientation() {
+            const nowPortrait = isPortrait();
+            if (nowPortrait === wasPortrait) return;
+            wasPortrait = nowPortrait;
+            if (nowPortrait) {
+                resetLetterSequence();
+                startLetterSequence();
+            } else {
+                resetLetterSequence();
+            }
+        }
+
+        window.addEventListener('resize', checkOrientation);
+        checkOrientation();
+    </script>
+
+    <script>
+    // Noise overlay texture
+    (function() {
+        var canvas = document.getElementById('noise-overlay');
+        var ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth * devicePixelRatio;
+            canvas.height = window.innerHeight * devicePixelRatio;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function renderNoise() {
+            var w = canvas.width, h = canvas.height;
+            var imageData = ctx.createImageData(w, h);
+            var data = imageData.data;
+            for (var i = 0; i < data.length; i += 4) {
+                var val = Math.random() * 255;
+                data[i] = val;
+                data[i + 1] = val;
+                data[i + 2] = val;
+                data[i + 3] = 255;
+            }
+            ctx.putImageData(imageData, 0, 0);
+            setTimeout(renderNoise, 200);
+        }
+        renderNoise();
+    })();
+    </script>
+</body>
+</html>

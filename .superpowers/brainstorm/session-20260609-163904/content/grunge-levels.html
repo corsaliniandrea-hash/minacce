@@ -1,0 +1,48 @@
+<h2>Grunge distrutto — quanto estremo?</h2>
+<p class="subtitle">Scegli il livello di distruzione per "MINACCE"</p>
+
+<div class="options">
+  <div class="option" data-choice="light" onclick="toggleSelect(this)">
+    <div class="letter">1</div>
+    <div class="content">
+      <h3>Leggero — "Usurato"</h3>
+      <p>Bordi leggermente sgranati, piccole imperfezioni, texture fine. Il font è ancora ben leggibile ma sembra vissuto e maltrattato.</p>
+      <ul style="margin-top:8px;font-size:0.9rem;color:#aaa">
+        <li>Filtro noise moderato (scale 10→20)</li>
+        <li>Path con piccolo jitter casuale</li>
+        <li>Opacità irregolare</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="option" data-choice="medium" onclick="toggleSelect(this)">
+    <div class="letter">2</div>
+    <div class="content">
+      <h3>Medio — "Semi-distrutto"</h3>
+      <p>Bordi frastagliati evidenti, parti di lettere corroso, texture pesante. Si legge ancora ma è chiaramente danneggiato.</p>
+      <ul style="margin-top:8px;font-size:0.9rem;color:#aaa">
+        <li>Filtro noise aggressivo (scale 20→40)</li>
+        <li>Path con jitter marcato</li>
+        <li>Maschere con buchi casuali</li>
+        <li>Effetto "torn paper" sui bordi</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="option" data-choice="extreme" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content">
+      <h3>Estremo — "Decadente"</h3>
+      <p>Il font è quasi irriconoscibile. Grandi parti mancanti, bordi laceri, sbriciolato. Più una texture che un testo.</p>
+      <ul style="margin-top:8px;font-size:0.9rem;color:#aaa">
+        <li>Filtro noise estremo (scale 40+)</li>
+        <li>Path pesantemente distorti</li>
+        <li>Buchi grandi nelle lettere</li>
+        <li>Multiple maschere di distruzione</li>
+        <li>Frame irregolari, parti che cadono</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<p style="margin-top:1.5rem;color:#aaa">Livello 2 (semi-distrutto) raccomandato per bilanciare impatto visivo e leggibilità.</p>

@@ -1,0 +1,46 @@
+<h2>Proposta di design — "Grunge Distrutto"</h2>
+
+<div class="section">
+  <h3>1. Filtro SVG potenziato</h3>
+  <p>Rimpiazzo il filtro <code>#noisy-text</code> attuale con uno più aggressivo:</p>
+  <ul>
+    <li><strong>feTurbulence:</strong> baseFrequency 4.0 (ora 1.8), numOctaves 4 (ora 3) — più rumore</li>
+    <li><strong>feDisplacementMap:</strong> scale 25 (ora 10) — bordi più frastagliati</li>
+    <li><strong>Aggiungo feMorphology:</strong> dilata/erode sottile — bordi "mangiati"</li>
+    <li><strong>Aggiungo feColorMatrix:</strong> contrasto sporco, opacità variabile</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>2. Distorsione JavaScript dei path</h3>
+  <p>Uno script che modifica i path SVG a runtime:</p>
+  <ul>
+    <li>Ogni vertice (M, L, C, S) viene spostato casualmente</li>
+    <li>Jitter progressivo: più forte sui bordi destro/inferiore</li>
+    <li>Ogni 5-10 secondi i path "tremano" per dare vita</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>3. Maschere di distruzione</h3>
+  <p>Uso clip-path/mask SVG per rimuovere pezzi di lettere:</p>
+  <ul>
+    <li>Macchie casuali che "mangiano" parti del testo</li>
+    <li>Si aggiornano lentamente ogni 3-4 secondi</li>
+    <li>Aree con più rumore hanno più buchi</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>4. Texture integrate</h3>
+  <ul>
+    <li>Doppia texture noise sovrapposta (mix-blend-mode: multiply)</li>
+    <li>Sporco, graffi, linee casuali generate via Hydra/Canvas</li>
+    <li>Particelle che si staccano dai bordi (opzionale)</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h3>Effetto finale atteso</h3>
+  <p>La scritta "MINACCE" sembrerà corrotta, distrutta, grunge — come se fosse stata dipinta su un muro 20 anni fa e poi parzialmente cancellata dal tempo. Gli effetti dinamici (tremolio, buchi che si spostano) daranno una sensazione di decadenza "viva".</p>
+</div> 
