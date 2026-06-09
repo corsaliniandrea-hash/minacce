@@ -48,7 +48,7 @@
             overflow: visible;
             filter: drop-shadow(0 0 40px rgba(0,0,0,0.7));
         }
-        #logo-paths { fill: #fff; }
+        #logo-paths { fill: #fff; cursor: crosshair; }
         #letter-sequence { fill: #fff; }
     </style>
 </head>
@@ -214,8 +214,12 @@
             if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
             if (v) { hoverTimer = setTimeout(() => hovering = false, 2000); }
         }
-        logo.addEventListener('mousemove', () => setHovering(true));
-        logo.addEventListener('mouseleave', () => setHovering(false));
+        logoPaths.addEventListener('mousemove', () => {
+            if (!hovering) triggerGlitch();
+            setHovering(true);
+        });
+        logoPaths.addEventListener('mouseleave', () => setHovering(false));
+        document.addEventListener('mouseleave', () => setHovering(false));
         logo.addEventListener('touchstart', () => setHovering(true));
         logo.addEventListener('touchend', () => setHovering(false));
 
@@ -317,7 +321,7 @@
         function triggerGlitch() {
             glitchStart = (performance.now() - startTime) / 1000;
             glitchDuration = 0.1 + Math.random() * 0.2;
-            nextGlitch = glitchDuration + 4 + Math.random() * 8;
+            nextGlitch = glitchDuration + (hovering ? 0.3 + Math.random() * 0.5 : 4 + Math.random() * 8);
         }
 
         function animateLogo(now) {
