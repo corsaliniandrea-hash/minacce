@@ -48,7 +48,7 @@
             overflow: visible;
             filter: drop-shadow(0 0 40px rgba(0,0,0,0.7));
         }
-        #logo-paths { fill: #fff; cursor: crosshair; }
+        #logo-paths { fill: #fff; }
         #letter-sequence { fill: #fff; }
     </style>
 </head>
@@ -145,6 +145,23 @@
             branch(toX, toY, nextAngle, nextLen, depth, maxDepth, path, main);
         }
 
+        function lightningHitsText(seg) {
+            var target = logoPaths;
+            if (logoPaths.style.display === 'none' && letterSeq) target = letterSeq;
+            var r = target.getBoundingClientRect();
+            if (!r || r.width === 0) return false;
+            for (var i = 0; i < seg.length; i++) {
+                var s = seg[i];
+                if (s.x2 >= r.left && s.x2 <= r.right && s.y2 >= r.top && s.y2 <= r.bottom) return true;
+                for (var t = 0.25; t < 1; t += 0.25) {
+                    var px = s.x1 + (s.x2 - s.x1) * t;
+                    var py = s.y1 + (s.y2 - s.y1) * t;
+                    if (px >= r.left && px <= r.right && py >= r.top && py <= r.bottom) return true;
+                }
+            }
+            return false;
+        }
+
         function createLightning() {
             var w = W(), h = H();
             var x = Math.random() * w;
@@ -153,6 +170,8 @@
             var mainLen = h * (0.35 + Math.random() * 0.35);
             var angle = Math.PI / 2 + (Math.random() - 0.5) * 0.25;
             branch(x, 0, angle, mainLen, 0, maxDepth, segments, true);
+
+            if (lightningHitsText(segments)) triggerGlitch();
 
             var ns = 'http://www.w3.org/2000/svg';
             var group = document.createElementNS(ns, 'g');
@@ -204,25 +223,6 @@
         let startTime = performance.now();
         let glitchStart = -999;
         let glitchDuration = 0;
-        let nextGlitch = 2 + Math.random() * 4;
-        let hovering = false;
-
-        let hoverTimer = null;
-        function setHovering(v) {
-            if (hovering === v && v !== false) return;
-            hovering = v;
-            if (hoverTimer) { clearTimeout(hoverTimer); hoverTimer = null; }
-            if (v) { hoverTimer = setTimeout(() => hovering = false, 2000); }
-        }
-        logoPaths.addEventListener('mousemove', () => {
-            if (!hovering) triggerGlitch();
-            setHovering(true);
-        });
-        logoPaths.addEventListener('mouseleave', () => setHovering(false));
-        document.addEventListener('mouseleave', () => setHovering(false));
-        logo.addEventListener('touchstart', () => setHovering(true));
-        logo.addEventListener('touchend', () => setHovering(false));
-
         // --- Letter Sequence for Portrait Mode ---
         let letterState = 'idle';
         let currentLetter = -1;
@@ -230,10 +230,34 @@
         let restartTimer = null;
         const letterGroups = [];
         let letterSeq = null;
-        let flashVisible = true;
-        let flashX = 0;
-        let flashY = 0;
-        let nextFlashChange = 0;
+
+        let randomJumpX = 0, randomJumpY = 0;
+        let jumpTimer = null;
+
+        function scheduleRandomJump() {
+            jumpTimer = setTimeout(function() {
+                var r = logoPaths.getBoundingClientRect();
+                if (r && r.width > 0) {
+                    var vw = window.innerWidth, vh = window.innerHeight;
+                    var margin = 10;
+                    var maxLeft = vw - r.width - margin;
+                    var maxTop = vh - r.height - margin;
+                    if (maxLeft > margin && maxTop > margin) {
+                        var newLeft = margin + Math.random() * (maxLeft - margin);
+                        var newTop = margin + Math.random() * (maxTop - margin);
+                        randomJumpX += newLeft - r.left;
+                        randomJumpY += newTop - r.top;
+                    }
+                }
+                scheduleRandomJump();
+            }, 800 + Math.random() * 600);
+        }
+
+        function stopRandomJumps() {
+            if (jumpTimer) { clearTimeout(jumpTimer); jumpTimer = null; }
+            randomJumpX = 0;
+            randomJumpY = 0;
+        }
 
         function isPortrait() {
             return window.innerHeight > window.innerWidth;
@@ -255,10 +279,7 @@
                 clone.setAttribute('fill', '#fff');
                 g.appendChild(clone);
 
-                const sc = Math.min(
-                    (1366 * 0.55) / bbox.width,
-                    (768 * 0.65) / bbox.height
-                ) * 2;
+                const sc = Math.min((1366 * 0.55) / bbox.width, 7);
                 const cx = bbox.x + bbox.width / 2;
                 const cy = bbox.y + bbox.height / 2;
                 g.setAttribute('transform',
@@ -291,12 +312,10 @@
                     letterSeq.style.display = 'none';
                     logoPaths.style.display = '';
                     letterState = 'done';
-                    flashVisible = true;
-                    flashX = 0;
-                    flashY = 0;
-                    nextFlashChange = 0;
+                    scheduleRandomJump();
                     restartTimer = setTimeout(function() {
                         if (isPortrait() && letterState === 'done') {
+                            resetLetterSequence();
                             startLetterSequence();
                         }
                     }, 6000);
@@ -305,10 +324,11 @@
             }
             triggerGlitch();
             setTimeout(function() { letterGroups[currentLetter].style.opacity = '1'; }, 80);
-            letterTimer = setTimeout(showNextLetter, 500);
+            letterTimer = setTimeout(showNextLetter, 1000);
         }
 
         function resetLetterSequence() {
+            stopRandomJumps();
             if (letterTimer) { clearTimeout(letterTimer); letterTimer = null; }
             if (restartTimer) { clearTimeout(restartTimer); restartTimer = null; }
             letterState = 'idle';
@@ -321,7 +341,6 @@
         function triggerGlitch() {
             glitchStart = (performance.now() - startTime) / 1000;
             glitchDuration = 0.1 + Math.random() * 0.2;
-            nextGlitch = glitchDuration + (hovering ? 0.3 + Math.random() * 0.5 : 4 + Math.random() * 8);
         }
 
         function animateLogo(now) {
@@ -336,34 +355,14 @@
 
             let filter = '';
 
-            if (letterState === 'done') {
-                if (t > nextFlashChange) {
-                    flashVisible = !flashVisible;
-                    if (flashVisible) {
-                        flashX = (Math.random() - 0.5) * 600;
-                        flashY = (Math.random() - 0.5) * 400;
-                    }
-                    nextFlashChange = t + 0.05 + Math.random() * 0.12;
-                }
-                if (flashVisible) {
-                    logoPaths.style.opacity = '';
-                    dx += flashX;
-                    dy += flashY;
-                } else {
-                    logoPaths.style.opacity = '0';
-                }
-            }
-
-            if (glitching && (hovering || letterState === 'sequence' || letterState === 'done')) {
+            if (glitching) {
                 const intensity = 1 - sinceGlitch / glitchDuration;
                 const chop = Math.floor(sinceGlitch * 6) % 4;
-                if (letterState !== 'sequence') {
-                    if (chop === 0) dx += 40;
-                    else if (chop === 2) dx -= 35;
-                    if (chop === 1) dy += 20;
-                }
+                if (chop === 0) dx += 30;
+                else if (chop === 2) dx -= 25;
                 if (chop === 1) {
                     scale *= 1.1;
+                    dy += 15;
                 }
                 if (chop === 3) {
                     rotate += 10;
@@ -371,10 +370,7 @@
                 }
             }
 
-            if ((t > nextGlitch && !glitching && hovering && letterState !== 'sequence') ||
-                (letterState === 'done' && !glitching)) {
-                triggerGlitch();
-            }
+            if (letterState === 'done') { dx += randomJumpX; dy += randomJumpY; }
 
             const skew = glitching ? 3 : 0;
 
